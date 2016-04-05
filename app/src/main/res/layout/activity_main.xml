@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     tools:context="com.igor13127.slidingpanel.MainActivity">
 
-    <com.igor13127.slidingpanel.DragLayout
+    <com.igor13127.slidingpanel.DragLayout android:id="@+id/DragLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 

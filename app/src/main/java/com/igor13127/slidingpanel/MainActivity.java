@@ -36,5 +36,8 @@ public class MainActivity extends AppCompatActivity {
         if (listView != null) {
             listView.setAdapter(adapter);
         }
+
+        DragLayout dragLayout = (DragLayout)findViewById(R.id.DragLayout);
+        dragLayout.setScrollableView(listView);
     }
 }
