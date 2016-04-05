@@ -5,6 +5,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import com.igor13127.slidingpanelmodule.DragLayout;
+
 import java.util.ArrayList;
 import java.util.List;
 

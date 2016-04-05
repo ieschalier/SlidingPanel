@@ -1,4 +1,4 @@
-package com.igor13127.slidingpanel;
+package com.igor13127.slidingpanelmodule;
 
 import android.view.View;
 import android.widget.ListView;

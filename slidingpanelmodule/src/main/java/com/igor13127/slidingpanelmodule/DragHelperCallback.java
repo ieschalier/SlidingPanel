@@ -1,4 +1,4 @@
-package com.igor13127.slidingpanel;
+package com.igor13127.slidingpanelmodule;
 
 import android.support.v4.widget.ViewDragHelper;
 import android.view.View;

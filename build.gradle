@@ -6,6 +6,9 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:1.5.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.2'
+        classpath 'com.github.dcendents:android-maven-plugin:1.2'
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:3.1.1"
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
@@ -14,6 +17,16 @@ buildscript {
 allprojects {
     repositories {
         jcenter()
+        repositories {
+            jcenter()
+            maven {
+                url "http://37.187.113.69:8081/artifactory/libs-release-local"
+                credentials {
+                    username privateRepoUserName
+                    password privateRepoUserPassword
+                }
+            }
+        }
     }
 }
 
