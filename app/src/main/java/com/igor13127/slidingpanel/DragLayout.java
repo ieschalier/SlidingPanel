@@ -64,6 +64,10 @@ public class DragLayout extends RelativeLayout {
      * True if the collapsed panel should be dragged up. always true because can have only one gravity (BOTTOM to TOP)
      */
     private boolean mIsSlidingUp = true;
+    /**
+     * Flag indicating that sliding feature is enabled\disabled
+     */
+    private boolean mIsTouchEnabled;
 
     private Context mContext;
 
@@ -81,16 +85,19 @@ public class DragLayout extends RelativeLayout {
 
         dragHelperCallback = new DragHelperCallback();
 
-        mDragHelper = ViewDragHelper.create(this, 1.0f, dragHelperCallback);
+        mDragHelper = ViewDragHelper.create(this, 0.5f, dragHelperCallback);
+
         mDragHelper.setEdgeTrackingEnabled(ViewDragHelper.EDGE_BOTTOM);
 
         mDragView = new PanelView(getContext(), attrs, defStyle);
 
         mSlideOffset = 0.0f;
+
+        mIsTouchEnabled = true;
     }
 
     boolean smoothSlideTo(float slideOffset) {
-        mSlideOffset = slideOffset;
+        mSlideOffset = -slideOffset;
         final int topBound = getPaddingTop();
         int y = (int) (topBound + slideOffset * mDragRange);
 
@@ -120,47 +127,12 @@ public class DragLayout extends RelativeLayout {
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent ev) {
-        mDragHelper.processTouchEvent(ev);
-
-        final int action = ev.getAction();
-        final float x = ev.getX();
-        final float y = ev.getY();
-
-        boolean isHeaderViewUnder = mDragHelper.isViewUnder(mDragView, (int) x, (int) y);
-        switch (action & MotionEventCompat.ACTION_MASK) {
-            case MotionEvent.ACTION_DOWN: {
-                Log.d("onTouchEvent", "action : ACTION_DOWN");
-                mInitialMotionY = y;
-                break;
-            }
-
-            case MotionEvent.ACTION_UP: {
-                Log.d("onTouchEvent", "action : ACTION_UP");
-                final float dy = y - mInitialMotionY;
-                final int slop = mDragHelper.getTouchSlop();
-                if (dy * dy < slop * slop && isHeaderViewUnder) {
-                    if (mDragOffset == 0) {
-                        openPanel();
-                    } else {
-                        closePanel();
-                    }
-                }
-                break;
-            }
-        }
-
-
-        return isHeaderViewUnder && isViewHit(mDragView, (int) x, (int) y);
-    }
-
-    @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         final int action = MotionEventCompat.getActionMasked(ev);
 
         Log.d("DragLayout", "dispatchTouchEvent action : " + action);
 
-        if (!isEnabled() || (mIsUnableToDrag && action != MotionEvent.ACTION_DOWN)) {
+        if (!isEnabled() || !isTouchEnabled() || (mIsUnableToDrag && action != MotionEvent.ACTION_DOWN)) {
             mDragHelper.abort();
             return super.dispatchTouchEvent(ev);
         }
@@ -239,52 +211,70 @@ public class DragLayout extends RelativeLayout {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        final int action = MotionEventCompat.getActionMasked(ev);
-
-        if (mIsScrollableViewHandlingTouch) {
+        // If the scrollable view is handling touch, never intercept
+        if (mIsScrollableViewHandlingTouch ||!isTouchEnabled()) {
             mDragHelper.abort();
             return false;
         }
 
-        if (( action != MotionEvent.ACTION_DOWN)) {
-            mDragHelper.cancel();
-            Log.d("onInterceptTouchEvent", "action : not ACTION_DOWN");
-            return super.onInterceptTouchEvent(ev);
-        }
-
-        if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
-            Log.d("onInterceptTouchEvent", "action : ACTION_UP or ACTION_CANCEL");
-            mDragHelper.cancel();
-            return false;
-        }
-
+        final int action = MotionEventCompat.getActionMasked(ev);
         final float x = ev.getX();
         final float y = ev.getY();
-        boolean interceptTap = false;
+        final float adx = Math.abs(x - mInitialMotionX);
+        final float ady = Math.abs(y - mInitialMotionY);
+        final int dragSlop = mDragHelper.getTouchSlop();
 
         switch (action) {
             case MotionEvent.ACTION_DOWN: {
-                Log.d("onInterceptTouchEvent", "action : ACTION_DOWN");
                 mIsUnableToDrag = false;
-                mInitialMotionY = y;
                 mInitialMotionX = x;
-                return true;
-                //interceptTap = mDragHelper.isViewUnder(mDragView, (int) x, (int) y);
+                mInitialMotionY = y;
+                break;
             }
 
             case MotionEvent.ACTION_MOVE: {
-                Log.d("onInterceptTouchEvent", "action : not ACTION_MOVE");
-                mIsUnableToDrag = true;
-                final float ady = Math.abs(y - mInitialMotionY);
-                final int slop = mDragHelper.getTouchSlop();
-                if (ady > slop) {
+                if ((ady > dragSlop && adx > ady) || !isViewUnder(mDragView, (int) mInitialMotionX, (int) mInitialMotionY)) {
                     mDragHelper.cancel();
+                    mIsUnableToDrag = true;
                     return false;
                 }
+                break;
             }
-        }
 
-        return mDragHelper.shouldInterceptTouchEvent(ev) || interceptTap;
+            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_UP:
+                // If the dragView is still dragging when we get here, we need to call processTouchEvent
+                // so that the view is settled
+                // Added to make scrollable views work (tokudu)
+                if (mDragHelper.isDragging()) {
+                    mDragHelper.processTouchEvent(ev);
+                    return true;
+                }
+                // Check if this was a click on the faded part of the screen, and fire off the listener if there is one.
+                if (ady <= dragSlop
+                        && adx <= dragSlop
+                        && mSlideOffset > 0 && !isViewUnder(mDragView, (int) mInitialMotionX, (int) mInitialMotionY)) {
+                    playSoundEffect(android.view.SoundEffectConstants.CLICK);
+                    //mFadeOnClickListener.onClick(this);
+                    return true;
+                }
+                break;
+        }
+        return mDragHelper.shouldInterceptTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        if (!isEnabled() ||!isTouchEnabled()) {
+            return super.onTouchEvent(ev);
+        }
+        try {
+            mDragHelper.processTouchEvent(ev);
+            return true;
+        } catch (Exception ex) {
+            // Ignore the pointer out of range exception
+            return false;
+        }
     }
 
     private boolean isViewUnder(View view, int x, int y) {
@@ -477,5 +467,18 @@ public class DragLayout extends RelativeLayout {
      */
     public void setScrollableViewHelper(ScrollableViewHelper helper) {
         mScrollableViewHelper = helper;
+    }
+
+    /**
+     * Set sliding enabled flag
+     *
+     * @param enabled flag value
+     */
+    public void setTouchEnabled(boolean enabled) {
+        mIsTouchEnabled = enabled;
+    }
+
+    public boolean isTouchEnabled() {
+        return mIsTouchEnabled && mDragView != null;
     }
 }

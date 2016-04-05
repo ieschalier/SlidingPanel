@@ -39,5 +39,6 @@ public class MainActivity extends AppCompatActivity {
 
         DragLayout dragLayout = (DragLayout)findViewById(R.id.DragLayout);
         dragLayout.setScrollableView(listView);
+        dragLayout.setTouchEnabled(true);
     }
 }
