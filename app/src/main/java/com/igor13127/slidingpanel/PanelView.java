@@ -70,9 +70,6 @@ public class PanelView extends LinearLayout {
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         final int action = MotionEventCompat.getActionMasked(ev);
-
-        Log.d("PanelView", "dispatchTouchEvent action : " + action);
-
         // In all other cases, just let the default behavior take over.
         return super.dispatchTouchEvent(ev);
     }

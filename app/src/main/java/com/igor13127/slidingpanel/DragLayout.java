@@ -97,7 +97,7 @@ public class DragLayout extends RelativeLayout {
     }
 
     boolean smoothSlideTo(float slideOffset) {
-        mSlideOffset = -slideOffset;
+        mSlideOffset = 1.0f-slideOffset;
         final int topBound = getPaddingTop();
         int y = (int) (topBound + slideOffset * mDragRange);
 
@@ -130,8 +130,6 @@ public class DragLayout extends RelativeLayout {
     public boolean dispatchTouchEvent(MotionEvent ev) {
         final int action = MotionEventCompat.getActionMasked(ev);
 
-        Log.d("DragLayout", "dispatchTouchEvent action : " + action);
-
         if (!isEnabled() || !isTouchEnabled() || (mIsUnableToDrag && action != MotionEvent.ACTION_DOWN)) {
             mDragHelper.abort();
             return super.dispatchTouchEvent(ev);
@@ -144,7 +142,6 @@ public class DragLayout extends RelativeLayout {
             mPrevMotionY = y;
         } else if (action == MotionEvent.ACTION_MOVE) {
             float dy = y - mPrevMotionY;
-            mPrevMotionY = y;
 
             // If the scroll view isn't under the touch, pass the
             // event along to the dragView.
@@ -181,7 +178,7 @@ public class DragLayout extends RelativeLayout {
             } else if (dy * (mIsSlidingUp ? 1 : -1) < 0) { // Expanding
                 // Is the panel less than fully expanded?
                 // Then we'll handle the drag here.
-                if (mSlideOffset < 1.0f) {
+                if (mSlideOffset == 0.0f) {
                     mIsScrollableViewHandlingTouch = false;
                     return this.onTouchEvent(ev);
                 }
@@ -322,36 +319,7 @@ public class DragLayout extends RelativeLayout {
                 removeView(view);
                 addView(mDragView);
                 mDragView.addView(view);
-                mDragView.setOnTouchListener(new OnSwipeTouchListener(mContext) {
-                    @Override
-                    public void onSwipeBottom() {
-                        Log.d("mDragView", "OnSwipeTouchListener Down");
-                    }
-
-                    @Override
-                    public void onSwipeLeft() {
-                        Log.d("mDragView", "OnSwipeTouchListener left");
-                    }
-
-                    @Override
-                    public void onSwipeTop() {
-                        Log.d("mDragView", "OnSwipeTouchListener Up");
-                    }
-
-                    @Override
-                    public void onSwipeRight() {
-                        Log.d("mDragView", "OnSwipeTouchListener Right");
-                    }
-                });
             }
-            /*mDragView = ;
-            mDragView.setOnTouchListener(new OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    Log.d("setOnTouchListener", "action receive");
-                    return false;
-                }
-            });*/
         }
 
         mBackView.post(new Runnable() {
@@ -384,8 +352,17 @@ public class DragLayout extends RelativeLayout {
         @Override
         public void onViewReleased(View releasedChild, float xvel, float yvel) {
             int top = getPaddingTop();
+            Log.d("DragLayout", "onViewReleased");
             if (yvel > 0 || (yvel == 0 && mDragOffset > 0.5f)) {
                 top += mDragRange;
+            }
+
+            Log.d("DragLayout", "mDragOffset value : " + mDragOffset);
+
+            if (mDragOffset > 0.5f){
+                openPanel();
+            }else{
+                closePanel();
             }
             mDragHelper.settleCapturedViewAt(0, top);
         }
