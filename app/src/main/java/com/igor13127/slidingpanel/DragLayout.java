@@ -23,7 +23,6 @@ public class DragLayout extends RelativeLayout {
     private View mDragView;
     private View mBackView;
 
-    private float mInitialMotionX;
     private float mInitialMotionY;
 
     private int mDragRange;
@@ -52,13 +51,29 @@ public class DragLayout extends RelativeLayout {
 
     boolean smoothSlideTo(float slideOffset) {
         final int topBound = getPaddingTop();
-        int x = (int) (topBound + slideOffset * mDragRange);
+        int y = (int) (topBound + slideOffset * mDragRange);
 
-        if (mDragHelper.smoothSlideViewTo(mDragView, mDragView.getTop(), x)) {
+        if (mDragHelper.smoothSlideViewTo(mDragView, 0, y)) {
             ViewCompat.postInvalidateOnAnimation(this);
             return true;
         }
         return false;
+    }
+
+    public void openPanel(){
+        smoothSlideTo(1f);
+    }
+
+    public void closePanel(){
+        smoothSlideTo(0f);
+    }
+
+    public boolean panelIsOpen(){
+        if (mDragView.getX() == mTop){
+            return true;
+        }else{
+            return false;
+        }
     }
 
     @Override
@@ -72,20 +87,18 @@ public class DragLayout extends RelativeLayout {
         boolean isHeaderViewUnder = mDragHelper.isViewUnder(mDragView, (int) x, (int) y);
         switch (action & MotionEventCompat.ACTION_MASK) {
             case MotionEvent.ACTION_DOWN: {
-                mInitialMotionX = x;
                 mInitialMotionY = y;
                 break;
             }
 
             case MotionEvent.ACTION_UP: {
-                final float dx = x - mInitialMotionX;
                 final float dy = y - mInitialMotionY;
                 final int slop = mDragHelper.getTouchSlop();
-                if (dx * dx + dy * dy < slop * slop && isHeaderViewUnder) {
+                if (dy * dy < slop * slop && isHeaderViewUnder) {
                     if (mDragOffset == 0) {
-                        smoothSlideTo(1f);
+                        openPanel();
                     } else {
-                        smoothSlideTo(0f);
+                        closePanel();
                     }
                 }
                 break;
@@ -94,6 +107,44 @@ public class DragLayout extends RelativeLayout {
 
 
         return isHeaderViewUnder && isViewHit(mDragView, (int) x, (int) y);
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        final int action = MotionEventCompat.getActionMasked(ev);
+
+        if (( action != MotionEvent.ACTION_DOWN)) {
+            mDragHelper.cancel();
+            return super.onInterceptTouchEvent(ev);
+        }
+
+        if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
+            mDragHelper.cancel();
+            return false;
+        }
+
+        final float x = ev.getX();
+        final float y = ev.getY();
+        boolean interceptTap = false;
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN: {
+                mInitialMotionY = y;
+                return true;
+                //interceptTap = mDragHelper.isViewUnder(mDragView, (int) x, (int) y);
+            }
+
+            case MotionEvent.ACTION_MOVE: {
+                final float ady = Math.abs(y - mInitialMotionY);
+                final int slop = mDragHelper.getTouchSlop();
+                if (ady > slop) {
+                    mDragHelper.cancel();
+                    return false;
+                }
+            }
+        }
+
+        return mDragHelper.shouldInterceptTouchEvent(ev) || interceptTap;
     }
 
     private float distance(float x1, float y1, float x2, float y2) {
@@ -126,7 +177,15 @@ public class DragLayout extends RelativeLayout {
         if (getChildAt(1) != null){
             mDragView = getChildAt(1);
         }
+
+        mBackView.post(new Runnable() {
+            @Override
+            public void run() {
+                openPanel();
+            }
+        });
     }
+
     private class DragHelperCallback extends ViewDragHelper.Callback {
 
         @Override
@@ -149,7 +208,7 @@ public class DragLayout extends RelativeLayout {
             if (yvel > 0 || (yvel == 0 && mDragOffset > 0.5f)) {
                 top += mDragRange;
             }
-            mDragHelper.settleCapturedViewAt(releasedChild.getLeft(), top);
+            mDragHelper.settleCapturedViewAt(releasedChild.getTop(), top);
         }
 
         @Override
@@ -160,10 +219,9 @@ public class DragLayout extends RelativeLayout {
         @Override
         public int clampViewPositionVertical(View child, int top, int dy) {
             final int topBound = getPaddingTop();
-            final int bottomBound = self.getHeight() - child.getHeight() + 100;
+            final int bottomBound = self.getHeight() - child.getHeight() + mBackView.getHeight();
 
-            final int newTop = Math.min(Math.max(top, topBound), bottomBound);
-            return newTop;
+            return Math.min(Math.max(top, topBound), bottomBound);
         }
 
     }
@@ -173,46 +231,6 @@ public class DragLayout extends RelativeLayout {
         if (mDragHelper.continueSettling(true)) {
             ViewCompat.postInvalidateOnAnimation(this);
         }
-    }
-
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        final int action = MotionEventCompat.getActionMasked(ev);
-
-        if (( action != MotionEvent.ACTION_DOWN)) {
-            mDragHelper.cancel();
-            return super.onInterceptTouchEvent(ev);
-        }
-
-        if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
-            mDragHelper.cancel();
-            return false;
-        }
-
-        final float x = ev.getX();
-        final float y = ev.getY();
-        boolean interceptTap = false;
-
-        switch (action) {
-            case MotionEvent.ACTION_DOWN: {
-                mInitialMotionX = x;
-                mInitialMotionY = y;
-                return true;
-                //interceptTap = mDragHelper.isViewUnder(mDragView, (int) x, (int) y);
-            }
-
-            case MotionEvent.ACTION_MOVE: {
-                final float adx = Math.abs(x - mInitialMotionX);
-                final float ady = Math.abs(y - mInitialMotionY);
-                final int slop = mDragHelper.getTouchSlop();
-                if (ady > slop && adx > ady) {
-                    mDragHelper.cancel();
-                    return false;
-                }
-            }
-        }
-
-        return mDragHelper.shouldInterceptTouchEvent(ev) || interceptTap;
     }
 
     private boolean isViewHit(View view, int x, int y) {
@@ -239,12 +257,18 @@ public class DragLayout extends RelativeLayout {
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        mDragRange = getHeight() - mDragView.getHeight();
+        mDragRange = mBackView.getMeasuredHeight();
 
         mDragView.layout(
                 0,
                 mTop,
                 r,
                 mTop + mDragView.getMeasuredHeight());
+
+        mBackView.layout(
+                0,
+                0,
+                r,
+                mBackView.getMeasuredHeight());
     }
 }
