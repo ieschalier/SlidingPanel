@@ -8,7 +8,7 @@ android {
         minSdkVersion 16
         targetSdkVersion 23
         versionCode 1
-        versionName "1.0.1"
+        versionName "1.0.3"
     }
     buildTypes {
         release {
@@ -29,7 +29,7 @@ apply plugin: 'com.jfrog.artifactory'
 apply plugin: 'maven-publish'
 
 def packageName = 'com.igor13127.slidingpanelmodule'
-def libraryVersion = '1.0.1'
+def libraryVersion = '1.0.3'
 
 publishing {
     publications {

@@ -70,6 +70,7 @@ public class DragLayout extends RelativeLayout {
     private boolean mIsTouchEnabled;
 
     private Context mContext;
+    private boolean mIsPreviousMove;
 
     public DragLayout(Context context) {
         this(context, null);
@@ -140,9 +141,9 @@ public class DragLayout extends RelativeLayout {
         if (action == MotionEvent.ACTION_DOWN) {
             mIsScrollableViewHandlingTouch = false;
             mPrevMotionY = y;
+            mIsPreviousMove = false;
         } else if (action == MotionEvent.ACTION_MOVE) {
             float dy = y - mPrevMotionY;
-
             // If the scroll view isn't under the touch, pass the
             // event along to the dragView.
             if (!isViewUnder(mScrollableView, (int) mInitialMotionX, (int) mInitialMotionY)) {
@@ -200,7 +201,30 @@ public class DragLayout extends RelativeLayout {
             if (mIsScrollableViewHandlingTouch) {
                 mDragHelper.setDragState(ViewDragHelper.STATE_IDLE);
             }
+
+            int middleBackView = (mBackView.getHeight() - getPaddingTop())/2;
+            if (mDragView.getY() > middleBackView){
+                boolean passToChild = true;
+                if (mSlideOffset == 1.0f){
+                    passToChild = false;
+                }
+                openPanel();
+                if (!passToChild) {
+                    return false;
+                }
+            }else{
+                boolean passToChild = true;
+                if (mSlideOffset == 0.0f){
+                    passToChild = false;
+                }
+                closePanel();
+                if (!passToChild) {
+                    return false;
+                }
+            }
+            mIsPreviousMove = false;
         }
+        mIsPreviousMove = false;
 
         // In all other cases, just let the default behavior take over.
         return super.dispatchTouchEvent(ev);
