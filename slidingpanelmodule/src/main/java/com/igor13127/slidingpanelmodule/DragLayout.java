@@ -97,12 +97,12 @@ public class DragLayout extends RelativeLayout {
         mIsTouchEnabled = true;
     }
 
-    boolean smoothSlideTo(float slideOffset) {
+    boolean smoothSlideTo(float slideOffset, boolean withAnim) {
         mSlideOffset = 1.0f-slideOffset;
         final int topBound = getPaddingTop();
         int y = (int) (topBound + slideOffset * mDragRange);
 
-        if (mDragHelper.smoothSlideViewTo(mDragView, 0, y)) {
+        if (mDragHelper.smoothSlideViewTo(mDragView, 0, y, withAnim)) {
             ViewCompat.postInvalidateOnAnimation(this);
             return true;
         }
@@ -110,12 +110,22 @@ public class DragLayout extends RelativeLayout {
     }
 
     public void openPanel(){
-        smoothSlideTo(1f);
+        smoothSlideTo(1f, true);
+        Log.d("DragLayout", "open panel action");
+    }
+
+    public void openPanelWhithoutAnim(){
+        smoothSlideTo(1f, false);
         Log.d("DragLayout", "open panel action");
     }
 
     public void closePanel(){
-        smoothSlideTo(0f);
+        smoothSlideTo(0f, true);
+        Log.d("DragLayout", "close panel action");
+    }
+
+    public void closePanelWhithoutAnim(){
+        smoothSlideTo(0f, true);
         Log.d("DragLayout", "close panel action");
     }
 
@@ -349,7 +359,8 @@ public class DragLayout extends RelativeLayout {
         mBackView.post(new Runnable() {
             @Override
             public void run() {
-                openPanel();
+                //mDragView.setTranslationY(mBackView.getMeasuredHeight());
+                openPanelWhithoutAnim();
             }
         });
     }
